@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h2>Flujo de electores entre secciones por elección</h2>
+  <h2>Migraciones en Córdoba según padrones electorales</h2>
   <div id="controls">
     <label>Origen:
       <select id="focusFrom"></select>
@@ -29,7 +29,7 @@
   </div>
   <div id="vis"></div>
   <p class="note">
-    Cada nodo representa una sección en una elección (2011 → 2025). Los enlaces muestran la cantidad de electores que permanecen o migran a otra sección en la elección siguiente. Usá el selector para filtrar por sección de origen o destino y el deslizador para ocultar flujos chicos.
+    Visualiza la trayectoria de electores cordobeses entre secciones en los padrones 2011 → 2025. Cada columna es una elección y cada enlace muestra cuántas personas permanecen o migran a una sección distinta en la siguiente elección. Podés filtrar por sección de origen/destino y ajustar un umbral para enfocar flujos relevantes. Trabajo realizado para el Equipo de Investigación Política y Open Data Córdoba.
   </p>
 
   <script>
@@ -49,6 +49,7 @@
     focusToSelect.addEventListener('change', render);
 
     d3.csv('migration_links.csv', d3.autoType).then(values => {
+      values = values.filter(d => d.from_seccion_nombre && d.to_seccion_nombre);
       const sections = Array.from(new Set(values.flatMap(d => [d.from_seccion_nombre, d.to_seccion_nombre])))
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b, 'es'));
@@ -99,6 +100,7 @@
       }));
 
       const width = 1200, height = 900;
+      const padX = 24;
       const color = d3.scaleOrdinal(d3.schemeTableau10);
 
       const svg = d3.select('#vis')
@@ -107,11 +109,12 @@
         .attr('width', width)
         .attr('height', height);
 
+      const topPadding = 40;
       const { nodes: layoutNodes, links: layoutLinks } = d3.sankey()
         .nodeWidth(12)
         .nodePadding(6)
         .nodeAlign(d3.sankeyLeft)
-        .extent([[1, 1], [width - 1, height - 1]])({
+        .extent([[padX, topPadding], [width - padX, height - 1]])({
           nodes: nodes.map(d => ({ ...d })),
           links: links.map(d => ({ ...d }))
         });
@@ -127,6 +130,30 @@
         ? `Total visible (≥ ${minFlow.toLocaleString()}): ${d3.sum(layoutLinks, d => d.value).toLocaleString()}`
         : `Flujo ${focusFrom} → ${focusTo} (≥ ${minFlow.toLocaleString()}): ${focusedTotal.toLocaleString()}`;
       summarySpan.textContent = summaryText;
+
+      // Año sobre cada columna
+      const yearPositions = new Map();
+      layoutNodes.forEach(n => {
+        const match = /\((\d{4})\)/.exec(n.name);
+        if (match) {
+          const year = match[1];
+          const xCenter = (n.x0 + n.x1) / 2;
+          if (!yearPositions.has(year) || xCenter < yearPositions.get(year)) {
+            yearPositions.set(year, xCenter);
+          }
+        }
+      });
+      const years = Array.from(yearPositions.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+      svg.append('g')
+        .style('font', '14px sans-serif')
+        .selectAll('text')
+        .data(years)
+        .join('text')
+          .attr('x', d => d[1])
+          .attr('y', topPadding - 18)
+          .attr('text-anchor', 'middle')
+          .text(d => d[0]);
 
       const link = svg.append('g')
         .attr('fill', 'none')
@@ -166,7 +193,7 @@
           .attr('y', d => (d.y1 + d.y0) / 2)
           .attr('dy', '0.35em')
           .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
-          .text(d => d.name);
+          .text(d => d.name.split(' (')[0]);
     }
   </script>
 </body>
