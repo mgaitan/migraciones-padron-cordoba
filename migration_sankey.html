@@ -14,6 +14,9 @@
 </head>
 <body>
   <h2>Migraciones en Córdoba según padrones electorales</h2>
+  <p class="note">
+    Visualiza la trayectoria de electores cordobeses entre secciones en los padrones 2011 → 2025. Cada columna es una elección; las bandas muestran cuántas personas permanecen o migran a otra sección en la siguiente elección. Usá los selectores de origen/destino para resaltar flujos específicos y el deslizador (percentil) para ocultar enlaces pequeños.
+  </p>
   <div id="controls">
     <label>Origen:
       <select id="focusFrom"></select>
@@ -22,14 +25,14 @@
       <select id="focusTo"></select>
     </label>
     <label>Flujo mínimo:
-      <input id="minFlow" type="range" min="0" max="5000" step="100" value="0">
+      <input id="minFlow" type="range" min="0" max="100" step="1" value="0">
       <span id="minFlowValue">0</span>
     </label>
     <span id="summary" class="note"></span>
   </div>
   <div id="vis"></div>
   <p class="note">
-    Visualiza la trayectoria de electores cordobeses entre secciones en los padrones 2011 → 2025. Cada columna es una elección y cada enlace muestra cuántas personas permanecen o migran a una sección distinta en la siguiente elección. Podés filtrar por sección de origen/destino y ajustar un umbral para enfocar flujos relevantes. Trabajo realizado para el Equipo de Investigación Política y Open Data Córdoba.
+    Trabajo realizado por Martín Gaitán para <a href="https://investigacionpolitica.com/" target="_blank" rel="noopener">Equipo de Investigación Política</a> y <a href="https://www.opendatacordoba.org/" target="_blank" rel="noopener">Open Data Córdoba</a>. Fuente: padrones electorales de distintas elecciones facilitados por agrupaciones políticas.
   </p>
 
   <script>
