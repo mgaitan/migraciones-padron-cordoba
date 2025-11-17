@@ -39,8 +39,16 @@
     const minFlowValue = document.getElementById('minFlowValue');
     const summarySpan = document.getElementById('summary');
 
+    let countsSorted = [];
+
+    function pctThreshold() {
+      const p = +minFlowInput.value / 100;
+      return countsSorted.length ? d3.quantileSorted(countsSorted, p) : 0;
+    }
+
     function updateSliderLabel() {
-      minFlowValue.textContent = minFlowInput.value;
+      const thr = Math.round(pctThreshold());
+      minFlowValue.textContent = `${thr.toLocaleString()} (p${minFlowInput.value})`;
     }
     updateSliderLabel();
 
@@ -50,6 +58,8 @@
 
     d3.csv('migration_links.csv', d3.autoType).then(values => {
       values = values.filter(d => d.from_seccion_nombre && d.to_seccion_nombre);
+      countsSorted = values.map(d => d.count).sort((a, b) => a - b);
+
       const sections = Array.from(new Set(values.flatMap(d => [d.from_seccion_nombre, d.to_seccion_nombre])))
         .filter(Boolean)
         .sort((a, b) => a.localeCompare(b, 'es'));
@@ -64,8 +74,9 @@
       fillSelect(focusFromSelect);
       fillSelect(focusToSelect);
 
-      const maxCount = d3.max(values, d => d.count);
-      minFlowInput.max = Math.ceil(maxCount / 10) * 10;
+      minFlowInput.min = 0;
+      minFlowInput.max = 100;
+      minFlowInput.step = 1;
       updateSliderLabel();
 
       window._allValues = values; // keep for re-render
@@ -75,7 +86,7 @@
     function render() {
       const focusFrom = focusFromSelect.value || '(todas)';
       const focusTo = focusToSelect.value || '(todas)';
-      const minFlow = +minFlowInput.value;
+      const minFlow = pctThreshold();
       const raw = window._allValues || [];
       const values = raw.filter(d => d.count >= minFlow);
 
