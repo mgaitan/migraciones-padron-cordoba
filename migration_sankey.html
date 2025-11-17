@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Flujos de migración de electores por sección</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12"></script>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1rem; }
+    #controls { margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    label { font-weight: 600; }
+    .note { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h2>Flujo de electores entre secciones por elección</h2>
+  <div id="controls">
+    <label>Sección foco:
+      <select id="focus"></select>
+    </label>
+    <label>Flujo mínimo:
+      <input id="minFlow" type="range" min="0" max="5000" step="100" value="0">
+      <span id="minFlowValue">0</span>
+    </label>
+  </div>
+  <div id="vis"></div>
+  <p class="note">
+    Cada nodo representa una sección en una elección (2011 → 2025). Los enlaces muestran la cantidad de electores que permanecen o migran a otra sección en la elección siguiente. Usá el selector para filtrar por sección de origen o destino y el deslizador para ocultar flujos chicos.
+  </p>
+
+  <script>
+    const focusSelect = document.getElementById('focus');
+    const minFlowInput = document.getElementById('minFlow');
+    const minFlowValue = document.getElementById('minFlowValue');
+
+    function updateSliderLabel() {
+      minFlowValue.textContent = minFlowInput.value;
+    }
+    updateSliderLabel();
+
+    minFlowInput.addEventListener('input', () => {
+      updateSliderLabel();
+      render();
+    });
+    focusSelect.addEventListener('change', render);
+
+    d3.csv('migration_links.csv', d3.autoType).then(values => {
+      const sections = Array.from(new Set(values.flatMap(d => [d.from_seccion_nombre, d.to_seccion_nombre])))
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'es'));
+      ['(todas)', ...sections].forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        focusSelect.appendChild(option);
+      });
+
+      const maxCount = d3.max(values, d => d.count);
+      minFlowInput.max = Math.ceil(maxCount / 10) * 10;
+      updateSliderLabel();
+
+      window._allValues = values; // keep for re-render
+      render();
+    });
+
+    function render() {
+      const focus = focusSelect.value || '(todas)';
+      const minFlow = +minFlowInput.value;
+      const raw = window._allValues || [];
+      const values = raw.filter(d => {
+        const passesFocus = focus === '(todas)' || d.from_seccion_nombre === focus || d.to_seccion_nombre === focus;
+        const passesMin = d.count >= minFlow;
+        return passesFocus && passesMin;
+      });
+
+      const nodesMap = new Map();
+      function addNode(name) {
+        if (!nodesMap.has(name)) nodesMap.set(name, { name });
+      }
+      values.forEach(d => {
+        addNode(`${d.from_seccion_nombre} (${d.from_year})`);
+        addNode(`${d.to_seccion_nombre} (${d.to_year})`);
+      });
+      const nodes = Array.from(nodesMap.values());
+      const index = new Map(nodes.map((n, i) => [n.name, i]));
+      const links = values.map(d => ({
+        source: index.get(`${d.from_seccion_nombre} (${d.from_year})`),
+        target: index.get(`${d.to_seccion_nombre} (${d.to_year})`),
+        value: d.count,
+        from_name: d.from_seccion_nombre,
+        to_name: d.to_seccion_nombre,
+        from_year: d.from_year,
+        to_year: d.to_year
+      }));
+
+      const width = 1200, height = 900;
+      const color = d3.scaleOrdinal(d3.schemeTableau10);
+
+      const svg = d3.select('#vis')
+        .html('')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height);
+
+      const { nodes: layoutNodes, links: layoutLinks } = d3.sankey()
+        .nodeWidth(12)
+        .nodePadding(6)
+        .nodeAlign(d3.sankeyLeft)
+        .extent([[1, 1], [width - 1, height - 1]])({
+          nodes: nodes.map(d => ({ ...d })),
+          links: links.map(d => ({ ...d }))
+        });
+
+      const link = svg.append('g')
+        .attr('fill', 'none')
+        .selectAll('path')
+        .data(layoutLinks)
+        .join('path')
+        .attr('d', d3.sankeyLinkHorizontal())
+        .attr('stroke', d => color(d.from_name))
+        .attr('stroke-opacity', d => (focus === '(todas)' || d.from_name === focus || d.to_name === focus) ? 0.8 : 0.2)
+        .attr('stroke-width', d => Math.max(1, d.width))
+        .append('title')
+        .text(d => `${d.from_name} (${d.from_year}) → ${d.to_name} (${d.to_year})\\n${d.value.toLocaleString()} electores`);
+
+      const node = svg.append('g')
+        .attr('stroke', '#000')
+        .selectAll('rect')
+        .data(layoutNodes)
+        .join('rect')
+          .attr('x', d => d.x0)
+          .attr('y', d => d.y0)
+          .attr('height', d => Math.max(1, d.y1 - d.y0))
+          .attr('width', d => d.x1 - d.x0)
+          .attr('fill', d => color(d.name.split(' (')[0]))
+          .append('title')
+          .text(d => `${d.name}\\n${d.value.toLocaleString()} electores totales`);
+
+      svg.append('g')
+        .style('font', '12px sans-serif')
+        .selectAll('text')
+        .data(layoutNodes)
+        .join('text')
+          .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+          .attr('y', d => (d.y1 + d.y0) / 2)
+          .attr('dy', '0.35em')
+          .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+          .text(d => d.name);
+    }
+  </script>
+</body>
+</html>
