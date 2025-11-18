@@ -1,0 +1,2 @@
+- Visualización online: https://mgaitan.github.io/migraciones-padron-cordoba/index.html
+- Post:  https://mgaitan.github.io/posts/analizando-la-migracion-intraprovincial-en-cordoba/
