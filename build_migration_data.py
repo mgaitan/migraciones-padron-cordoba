@@ -77,6 +77,44 @@ def write_links(cur, pairs):
             print(f"Processing {y1}->{y2}…", flush=True)
             cur.execute(
                 """
+                /*
+                Esta consulta SQL tiene como objetivo principal identificar y cuantificar la "migración"
+                de votantes entre diferentes secciones electorales a lo largo de dos años específicos.
+                Es decir, busca cuántas personas votaron en una sección 'A' en el primer año (e1.anio)
+                y luego votaron en una sección 'B' en el segundo año (e2.anio).
+
+                Desglose de la consulta:
+
+                1.  SELECT: Define las columnas que se retornarán:
+                    -   `e1.seccion AS from_seccion`: La sección electoral donde votó la persona en el primer año.
+                    -   `e2.seccion AS to_seccion`: La sección electoral donde votó la misma persona en el segundo año.
+                    -   `COUNT(*) AS count`: El número total de personas que hicieron esa transición específica de 'from_seccion' a 'to_seccion'.
+
+                2.  FROM y JOIN: Especifica las tablas y cómo se relacionan:
+                    -   `FROM elecciones e1 INDEXED BY idx_elecciones_dni_anio`: Se selecciona la tabla `elecciones` y se le da el alias `e1`.
+                        La cláusula `INDEXED BY` sugiere al optimizador de SQLite utilizar el índice `idx_elecciones_dni_anio` para esta tabla,
+                        lo cual es crucial para un rendimiento eficiente en búsquedas por DNI y año. Esto corresponde al "año de origen".
+                    -   `JOIN elecciones e2 INDEXED BY idx_elecciones_dni_anio`: Se une la misma tabla `elecciones` de nuevo, esta vez con el alias `e2`.
+                        También se sugiere el mismo índice para `e2`. Esto corresponde al "año de destino".
+                    -   `ON e1.dni = e2.dni AND e2.anio = ?`: Esta es la condición de unión.
+                        -   `e1.dni = e2.dni`: Asegura que estamos comparando los registros de la *misma persona* (identificada por su DNI) en ambos años.
+                        -   `e2.anio = ?`: Filtra los registros de `e2` para que correspondan únicamente al segundo año (el valor del primer `?` en los parámetros).
+
+                3.  WHERE: Filtra los registros antes de la unión completa:
+                    -   `e1.anio = ?`: Limita los registros de la tabla `e1` al primer año de interés (el valor del segundo `?` en los parámetros).
+                        Esto establece el "año de origen" para la comparación.
+
+                4.  GROUP BY: Agrupa los resultados para contar:
+                    -   `GROUP BY e1.seccion, e2.seccion`: Agrupa todas las filas que tienen la misma combinación de sección de origen (`e1.seccion`)
+                        y sección de destino (`e2.seccion`). `COUNT(*)` entonces opera sobre estos grupos.
+
+                5.  ORDER BY: Organiza la salida:
+                    -   `ORDER BY count DESC`: Ordena los resultados finales de forma descendente basándose en la columna `count`.
+                        Esto significa que las combinaciones de secciones con la mayor cantidad de votantes migrando aparecerán primero.
+
+                En resumen, la consulta busca pares de secciones (origen -> destino) y cuenta cuántos votantes específicos
+                se movieron de la primera sección en el año `y1` a la segunda sección en el año `y2`.
+                */
                 SELECT
                     e1.seccion AS from_seccion,
                     e2.seccion AS to_seccion,
