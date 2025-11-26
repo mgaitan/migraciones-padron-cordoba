@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Mapa de oferta eléctrica por grupos</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+            integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+            crossorigin=""
+        />
+        <style>
+            body {
+                font-family:
+                    "Inter",
+                    "Segoe UI",
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                background-color: #f5f5f5;
+            }
+            .card {
+                border: none;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            }
+            #map {
+                width: 100%;
+                height: 520px;
+                border-radius: 0.5rem;
+            }
+            @media (min-width: 992px) {
+                #map {
+                    height: 640px;
+                }
+            }
+            .summary-chip {
+                border-radius: 999px;
+                padding: 0.25rem 0.75rem;
+                background: #eef2ff;
+                color: #312e81;
+                font-weight: 600;
+                font-size: 0.95rem;
+            }
+            .chart-empty {
+                text-align: center;
+                color: #6b7280;
+                padding: 2rem;
+                font-size: 0.95rem;
+            }
+            .leaflet-container {
+                font-family: inherit;
+            }
+            .filter-label {
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #374151;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container-fluid py-4">
+            <div class="mb-4">
+                <h1 class="h3 mb-2">Oferta eléctrica por grupo económico</h1>
+                <p class="text-muted mb-0">
+                    Explorá los datos de oferta mensual de generación del MEM.
+                    Podés filtrar por categoría y ver cómo se distribuye la
+                    generación neta y la ubicación de las máquinas
+                    geolocalizadas.
+                </p>
+            </div>
+
+            <div class="card p-3 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-2">
+                        <label for="filterGrupo" class="filter-label"
+                            >Grupo económico</label
+                        >
+                        <select
+                            id="filterGrupo"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label for="filterRegion" class="filter-label"
+                            >Región</label
+                        >
+                        <select
+                            id="filterRegion"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label for="filterProvincia" class="filter-label"
+                            >Provincia</label
+                        >
+                        <select
+                            id="filterProvincia"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label for="filterTipo" class="filter-label"
+                            >Tipo máquina</label
+                        >
+                        <select
+                            id="filterTipo"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label for="filterTecnologia" class="filter-label"
+                            >Tecnología</label
+                        >
+                        <select
+                            id="filterTecnologia"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <label for="filterFuente" class="filter-label"
+                            >Fuente generación</label
+                        >
+                        <select
+                            id="filterFuente"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-12 col-lg-4">
+                        <label for="aggregationField" class="filter-label"
+                            >Agregación del gráfico</label
+                        >
+                        <select
+                            id="aggregationField"
+                            class="form-select form-select-sm"
+                        ></select>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <span
+                            id="summary"
+                            class="summary-chip d-inline-block"
+                        ></span>
+                    </div>
+                    <div class="col-12 col-lg-4 text-lg-end">
+                        <button
+                            class="btn btn-outline-secondary btn-sm"
+                            id="resetFilters"
+                        >
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12 col-lg-7">
+                    <div class="card p-3 h-100">
+                        <div
+                            class="d-flex justify-content-between align-items-center mb-2"
+                        >
+                            <h2 class="h5 mb-0">Mapa de máquinas filtradas</h2>
+                            <span
+                                class="text-muted small"
+                                id="mapCounter"
+                            ></span>
+                        </div>
+                        <div
+                            id="map"
+                            aria-label="Mapa de geolocalización"
+                        ></div>
+                        <p class="text-muted small mt-2 mb-0" id="mapNote"></p>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-5">
+                    <div class="card p-3 h-100">
+                        <div
+                            class="d-flex justify-content-between align-items-center mb-2"
+                        >
+                            <h2 class="h5 mb-0">Generación neta agregada</h2>
+                            <span
+                                class="text-muted small"
+                                id="chartCaption"
+                            ></span>
+                        </div>
+                        <div id="barChart" class="w-100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+        <script
+            src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+            integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+            crossorigin=""
+        ></script>
+        <script>
+            const filters = {
+                grupo_economico: "",
+                region: "",
+                provincia: "",
+                tipo_maquina: "",
+                tecnologia: "",
+                fuente_generacion: "",
+            };
+
+            const filterConfig = [
+                {
+                    id: "filterGrupo",
+                    field: "grupo_economico",
+                    label: "Grupo económico",
+                },
+                { id: "filterRegion", field: "region", label: "Región" },
+                {
+                    id: "filterProvincia",
+                    field: "provincia",
+                    label: "Provincia",
+                },
+                {
+                    id: "filterTipo",
+                    field: "tipo_maquina",
+                    label: "Tipo de máquina",
+                },
+                {
+                    id: "filterTecnologia",
+                    field: "tecnologia",
+                    label: "Tecnología",
+                },
+                {
+                    id: "filterFuente",
+                    field: "fuente_generacion",
+                    label: "Fuente",
+                },
+            ];
+
+            const provinceCentroids = {
+                "BUENOS AIRES": { lat: -36.25, lon: -60.15 },
+                CATAMARCA: { lat: -27.27, lon: -66.35 },
+                CHACO: { lat: -26.5, lon: -60.5 },
+                CHUBUT: { lat: -43.7, lon: -67.5 },
+                CORDOBA: { lat: -32.1, lon: -64.3 },
+                CORRIENTES: { lat: -28.7, lon: -58.8 },
+                "ENTRE RIOS": { lat: -32.0, lon: -59.4 },
+                FORMOSA: { lat: -25.7, lon: -59.1 },
+                JUJUY: { lat: -23.3, lon: -65.0 },
+                "LA PAMPA": { lat: -37.5, lon: -65.0 },
+                "LA RIOJA": { lat: -29.5, lon: -67.0 },
+                MENDOZA: { lat: -34.6, lon: -68.3 },
+                MISIONES: { lat: -26.8, lon: -54.9 },
+                NEUQUEN: { lat: -38.6, lon: -70.1 },
+                "RIO NEGRO": { lat: -40.8, lon: -67.8 },
+                SALTA: { lat: -24.8, lon: -65.4 },
+                "SAN JUAN": { lat: -30.9, lon: -68.8 },
+                "SAN LUIS": { lat: -33.3, lon: -66.3 },
+                "SANTA CRUZ": { lat: -48.8, lon: -69.3 },
+                "SANTA FE": { lat: -31.3, lon: -60.7 },
+                "SGO.DEL ESTERO": { lat: -27.8, lon: -64.3 },
+                TUCUMAN: { lat: -26.9, lon: -65.2 },
+            };
+
+            function normalizeProvince(name) {
+                return (name || "").toString().trim().toUpperCase();
+            }
+
+            function hashString(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i += 1) {
+                    hash = (hash << 5) - hash + str.charCodeAt(i);
+                    hash |= 0;
+                }
+                return hash || 1;
+            }
+
+            function getFallbackLocation(provincia, key) {
+                const centroid =
+                    provinceCentroids[normalizeProvince(provincia)];
+                if (!centroid) return null;
+                const hash = hashString(`${key}|${provincia}`);
+                const jitterLat = Math.sin(hash) * 0.35;
+                const jitterLon = Math.cos(hash) * 0.35;
+                return {
+                    lat: centroid.lat + jitterLat,
+                    lon: centroid.lon + jitterLon,
+                };
+            }
+
+            const aggregationOptions = [
+                { value: "grupo_economico", label: "Grupo económico" },
+                { value: "region", label: "Región" },
+                { value: "provincia", label: "Provincia" },
+                { value: "tipo_maquina", label: "Tipo de máquina" },
+                { value: "tecnologia", label: "Tecnología" },
+                { value: "fuente_generacion", label: "Fuente de generación" },
+            ];
+
+            const aggregationSelect =
+                document.getElementById("aggregationField");
+            aggregationOptions.forEach((opt) => {
+                const option = document.createElement("option");
+                option.value = opt.value;
+                option.textContent = opt.label;
+                aggregationSelect.appendChild(option);
+            });
+            aggregationSelect.value = "grupo_economico";
+
+            const numberFormatter = new Intl.NumberFormat("es-AR", {
+                maximumFractionDigits: 0,
+            });
+            const energyFormatter = new Intl.NumberFormat("es-AR", {
+                maximumFractionDigits: 0,
+            });
+            const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+
+            const summarySpan = document.getElementById("summary");
+            const mapCounterSpan = document.getElementById("mapCounter");
+            const mapNote = document.getElementById("mapNote");
+            const chartCaption = document.getElementById("chartCaption");
+            const resetButton = document.getElementById("resetFilters");
+
+            const defaultMarkerStyle = {
+                radius: 6,
+                color: "#1d4ed8",
+                weight: 1,
+                fillColor: "#3b82f6",
+                fillOpacity: 0.85,
+            };
+            const approxMarkerStyle = {
+                radius: 6,
+                color: "#7c3aed",
+                weight: 1,
+                fillColor: "#c4b5fd",
+                fillOpacity: 0.85,
+                dashArray: "2,3",
+            };
+            const highlightMarkerStyle = {
+                radius: 9,
+                color: "#f97316",
+                weight: 2,
+                fillColor: "#fb923c",
+                fillOpacity: 0.95,
+            };
+
+            let machines = [];
+            let map;
+            let markersLayer;
+            const markerRefs = new Map();
+
+            init();
+
+            function init() {
+                createMap();
+                d3.csv("oferta_grupos.csv", parseRow).then((rows) => {
+                    machines = aggregateMachines(rows);
+                    populateFilters(machines);
+                    updateVisuals();
+                });
+            }
+
+            function parseRow(row) {
+                const parsed = { ...row };
+                parsed.ano = +row.ano || null;
+                parsed.generacion_neta = +row.generacion_neta || 0;
+                parsed.lon = row.lon ? +row.lon : null;
+                parsed.lat = row.lat ? +row.lat : null;
+                parsed.potencia_instalada = row.potencia_instalada
+                    ? +row.potencia_instalada
+                    : null;
+                return parsed;
+            }
+
+            function aggregateMachines(rows) {
+                const grouped = d3.group(rows, (d) => d.maquina);
+                return Array.from(grouped, ([maquina, items]) => {
+                    const sample = items[0];
+                    const rawProvince =
+                        (sample.provincia && sample.provincia.trim()) || "";
+                    const hasExactLocation =
+                        Number.isFinite(sample.lat) &&
+                        Number.isFinite(sample.lon);
+                    let lat = hasExactLocation ? sample.lat : null;
+                    let lon = hasExactLocation ? sample.lon : null;
+                    let isApproxLocation = false;
+                    if (!hasExactLocation && rawProvince) {
+                        const fallback = getFallbackLocation(
+                            rawProvince,
+                            maquina,
+                        );
+                        if (fallback) {
+                            lat = fallback.lat;
+                            lon = fallback.lon;
+                            isApproxLocation = true;
+                        }
+                    }
+                    const pick = (field) => {
+                        const value = sample[field];
+                        if (value === undefined || value === null)
+                            return "Sin dato";
+                        const trimmed =
+                            typeof value === "string" ? value.trim() : value;
+                        return trimmed === "" ? "Sin dato" : trimmed;
+                    };
+                    return {
+                        maquina,
+                        central: pick("central"),
+                        codigo_agente: pick("codigo_agente"),
+                        agente_descripcion: pick("agente_descripcion"),
+                        region: pick("region"),
+                        provincia: pick("provincia"),
+                        pais: pick("pais"),
+                        tipo_maquina: pick("tipo_maquina"),
+                        fuente_generacion: pick("fuente_generacion"),
+                        tecnologia: pick("tecnologia"),
+                        categoria_hidraulica: pick("categoria_hidraulica"),
+                        categoria_region: pick("categoria_region"),
+                        grupo_economico: pick("grupo_economico"),
+                        lon,
+                        lat,
+                        geo_nombre:
+                            sample.geo_nombre || pick("agente_descripcion"),
+                        geo_tecnologia:
+                            sample.geo_tecnologia || pick("tecnologia"),
+                        geo_nombre_age:
+                            sample.geo_nombre_age || pick("agente_descripcion"),
+                        potencia_instalada: sample.potencia_instalada || null,
+                        geo_sistema: sample.geo_sistema || "Sin dato",
+                        hasExactLocation,
+                        isApproxLocation,
+                        generacion_total: d3.sum(
+                            items,
+                            (d) => d.generacion_neta,
+                        ),
+                        registros: items.length,
+                    };
+                });
+            }
+
+            function populateFilters(data) {
+                filterConfig.forEach((cfg) => {
+                    const select = document.getElementById(cfg.id);
+                    fillSelect(
+                        select,
+                        data.map((d) => d[cfg.field]),
+                    );
+                    select.addEventListener("change", () => {
+                        filters[cfg.field] = select.value;
+                        updateVisuals();
+                    });
+                });
+                resetButton.addEventListener("click", () => {
+                    Object.keys(filters).forEach((key) => (filters[key] = ""));
+                    filterConfig.forEach((cfg) => {
+                        const select = document.getElementById(cfg.id);
+                        select.value = "";
+                    });
+                    updateVisuals();
+                });
+                aggregationSelect.addEventListener("change", () => {
+                    updateVisuals();
+                });
+            }
+
+            function fillSelect(select, values) {
+                const uniqueValues = Array.from(
+                    new Set(values.filter(Boolean)),
+                ).sort((a, b) => a.localeCompare(b, "es"));
+                select.innerHTML = "";
+                const optionAll = document.createElement("option");
+                optionAll.value = "";
+                optionAll.textContent = "Todas";
+                select.appendChild(optionAll);
+                uniqueValues.forEach((value) => {
+                    const opt = document.createElement("option");
+                    opt.value = value;
+                    opt.textContent = value;
+                    select.appendChild(opt);
+                });
+            }
+
+            function getFilteredData() {
+                return machines.filter((item) => {
+                    return (
+                        (!filters.grupo_economico ||
+                            item.grupo_economico === filters.grupo_economico) &&
+                        (!filters.region || item.region === filters.region) &&
+                        (!filters.provincia ||
+                            item.provincia === filters.provincia) &&
+                        (!filters.tipo_maquina ||
+                            item.tipo_maquina === filters.tipo_maquina) &&
+                        (!filters.tecnologia ||
+                            item.tecnologia === filters.tecnologia) &&
+                        (!filters.fuente_generacion ||
+                            item.fuente_generacion ===
+                                filters.fuente_generacion)
+                    );
+                });
+            }
+
+            function updateVisuals() {
+                const filtered = getFilteredData();
+                updateSummary(filtered);
+                renderMap(filtered);
+                renderBars(filtered);
+            }
+
+            function updateSummary(data) {
+                const totalGen = d3.sum(data, (d) => d.generacion_total);
+                const located = data.filter(
+                    (d) => Number.isFinite(d.lat) && Number.isFinite(d.lon),
+                );
+                const withGeo = located.length;
+                const exactCount = located.filter(
+                    (d) => d.hasExactLocation,
+                ).length;
+                const approxCount = located.filter(
+                    (d) => d.isApproxLocation,
+                ).length;
+                const totalMachines = data.length;
+                const approxInfo = approxCount
+                    ? ` + ${numberFormatter.format(approxCount)} aprox.`
+                    : "";
+                summarySpan.textContent = `${numberFormatter.format(totalMachines)} máquinas filtradas | ${numberFormatter.format(exactCount)} con coordenada oficial${approxInfo} | ${energyFormatter.format(Math.round(totalGen))} MWh generados`;
+                mapCounterSpan.textContent = withGeo
+                    ? `${withGeo} ubicadas (${numberFormatter.format(
+                          exactCount,
+                      )} exactas${approxCount ? `, ${approxCount} aprox.` : ""})`
+                    : "Sin geolocalización disponible";
+                mapNote.textContent = approxCount
+                    ? "Las máquinas sin coordenadas oficiales se ubican cerca del centroide provincial (posición aproximada)."
+                    : "";
+            }
+
+            function createMap() {
+                map = L.map("map", {
+                    preferCanvas: true,
+                    zoomControl: true,
+                }).setView([-38.5, -63], 4);
+                L.tileLayer(
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    {
+                        maxZoom: 12,
+                        attribution: "&copy; OpenStreetMap contributors",
+                    },
+                ).addTo(map);
+                markersLayer = L.layerGroup().addTo(map);
+            }
+
+            function renderMap(data) {
+                markersLayer.clearLayers();
+                markerRefs.clear();
+                const points = [];
+                data.forEach((item) => {
+                    if (
+                        !Number.isFinite(item.lat) ||
+                        !Number.isFinite(item.lon)
+                    )
+                        return;
+                    const style = item.isApproxLocation
+                        ? approxMarkerStyle
+                        : defaultMarkerStyle;
+                    const marker = L.circleMarker([item.lat, item.lon], style);
+                    marker.bindPopup(buildPopup(item));
+                    marker.addTo(markersLayer);
+                    markerRefs.set(item.maquina, {
+                        marker,
+                        isApprox: item.isApproxLocation,
+                    });
+                    points.push([item.lat, item.lon]);
+                });
+                if (points.length) {
+                    const bounds = L.latLngBounds(points);
+                    map.fitBounds(bounds.pad(0.15));
+                } else {
+                    map.setView([-38.5, -63], 4);
+                }
+                highlightMachines(null);
+            }
+
+            function buildPopup(item) {
+                return `
+        <div>
+          <strong>${item.geo_nombre || item.maquina}</strong><br>
+          Máquina: ${item.maquina}<br>
+          Grupo: ${item.grupo_economico}<br>
+          Región: ${item.region} · Provincia: ${item.provincia}<br>
+          Tipo: ${item.tipo_maquina} (${item.tecnologia})<br>
+          Generación neta acumulada: ${numberFormatter.format(Math.round(item.generacion_total))} MWh<br>
+          Potencia instalada: ${item.potencia_instalada ? item.potencia_instalada + " MW" : "Sin dato"}${item.isApproxLocation ? "<br><em>Ubicación aproximada (centroide provincial)</em>" : ""}
+        </div>`;
+            }
+
+            function renderBars(data) {
+                const container = document.getElementById("barChart");
+                container.innerHTML = "";
+                const dimension = aggregationSelect.value;
+                const dimensionLabel =
+                    aggregationOptions.find((opt) => opt.value === dimension)
+                        ?.label || "";
+                chartCaption.textContent = dimensionLabel
+                    ? `Por ${dimensionLabel.toLowerCase()}`
+                    : "";
+                if (!data.length) {
+                    container.innerHTML =
+                        '<div class="chart-empty">No hay datos para los filtros seleccionados.</div>';
+                    return;
+                }
+                const grouped = d3
+                    .rollups(
+                        data,
+                        (v) => d3.sum(v, (d) => d.generacion_total),
+                        (d) =>
+                            d[dimension] && d[dimension] !== "Sin dato"
+                                ? d[dimension]
+                                : "Sin dato",
+                    )
+                    .sort((a, b) => b[1] - a[1]);
+                const maxBars = dimension === "provincia" ? 15 : 12;
+                const visible = grouped.slice(0, maxBars);
+                const remainder = grouped.slice(maxBars);
+                if (remainder.length) {
+                    visible.push(["Otros", d3.sum(remainder, (d) => d[1])]);
+                }
+
+                const width = container.clientWidth || 520;
+                const margin = { top: 10, right: 16, bottom: 30, left: 150 };
+                const innerWidth = Math.max(
+                    220,
+                    width - margin.left - margin.right,
+                );
+                const barHeight = 26;
+                const barGap = 12;
+                const innerHeight = visible.length * (barHeight + barGap);
+                const height = innerHeight + margin.top + margin.bottom;
+
+                const svg = d3
+                    .create("svg")
+                    .attr("width", "100%")
+                    .attr("height", height)
+                    .attr("viewBox", `0 0 ${width} ${height}`);
+
+                const g = svg
+                    .append("g")
+                    .attr(
+                        "transform",
+                        `translate(${margin.left},${margin.top})`,
+                    );
+
+                const x = d3
+                    .scaleLinear()
+                    .domain([0, d3.max(visible, (d) => d[1]) || 1])
+                    .range([0, innerWidth]);
+
+                const y = d3
+                    .scaleBand()
+                    .domain(visible.map((d) => d[0]))
+                    .range([0, innerHeight])
+                    .padding(0.2);
+
+                g.append("g")
+                    .call(d3.axisLeft(y).tickSize(0))
+                    .selectAll("text")
+                    .style("font-size", "0.85rem")
+                    .style("fill", "#374151");
+                g.select(".domain").remove();
+
+                g.append("g")
+                    .attr("transform", `translate(0, ${innerHeight})`)
+                    .call(
+                        d3
+                            .axisBottom(x)
+                            .ticks(4)
+                            .tickFormat((d) =>
+                                numberFormatter.format(Math.round(d)),
+                            ),
+                    )
+                    .selectAll("text")
+                    .style("font-size", "0.8rem")
+                    .style("fill", "#6b7280");
+
+                const bars = g
+                    .selectAll(".bar")
+                    .data(visible)
+                    .join("g")
+                    .attr("class", "bar")
+                    .attr("transform", (d) => `translate(0, ${y(d[0])})`)
+                    .style("cursor", (d) =>
+                        d[0] === "Otros" ? "default" : "pointer",
+                    );
+
+                bars.append("rect")
+                    .attr("height", y.bandwidth())
+                    .attr("width", (d) => Math.max(4, x(d[1])))
+                    .attr("rx", 6)
+                    .attr("fill", (d) =>
+                        d[0] === "Otros" ? "#dbeafe" : colorScale(d[0]),
+                    );
+
+                bars.append("text")
+                    .attr("x", (d) => Math.min(innerWidth - 4, x(d[1]) + 8))
+                    .attr("y", y.bandwidth() / 2)
+                    .attr("dy", "0.35em")
+                    .style("font-size", "0.82rem")
+                    .style("fill", "#111827")
+                    .text(
+                        (d) =>
+                            `${numberFormatter.format(Math.round(d[1]))} MWh`,
+                    );
+
+                bars.on("mouseenter", (event, d) =>
+                    highlightByDimension(d[0], dimension, data),
+                ).on("mouseleave", clearHighlights);
+
+                container.appendChild(svg.node());
+            }
+
+            function highlightByDimension(value, dimension, data) {
+                if (value === "Otros") {
+                    highlightMachines(null);
+                    return;
+                }
+                const matches = new Set(
+                    data
+                        .filter(
+                            (item) => (item[dimension] || "Sin dato") === value,
+                        )
+                        .map((item) => item.maquina),
+                );
+                highlightMachines(matches);
+            }
+
+            function clearHighlights() {
+                highlightMachines(null);
+            }
+
+            function highlightMachines(targetSet) {
+                markerRefs.forEach((entry, key) => {
+                    const { marker, isApprox } = entry;
+                    if (targetSet && targetSet.has(key)) {
+                        marker.setStyle(highlightMarkerStyle);
+                        if (marker.bringToFront) marker.bringToFront();
+                    } else {
+                        marker.setStyle(
+                            isApprox ? approxMarkerStyle : defaultMarkerStyle,
+                        );
+                        if (marker.bringToBack) marker.bringToBack();
+                    }
+                });
+            }
+        </script>
+    </body>
+</html>
