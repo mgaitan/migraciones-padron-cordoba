@@ -411,23 +411,21 @@
                     </div>
                 </div>
                 <div class="row g-3 mt-2 align-items-end">
-                    <div class="col-12 col-lg-3">
-                        <label for="aggregationField" class="filter-label"
-                            >Agregación del gráfico</label
-                        >
-                        <select
-                            id="aggregationField"
-                            class="form-select form-select-sm"
-                        ></select>
-                    </div>
-                    <div class="col-12 col-lg-3">
+                    <div class="col-12 col-lg-6">
                         <label for="metricField" class="filter-label"
-                            >Variable cuantitativa</label
+                            >Visualización</label
                         >
-                        <select
-                            id="metricField"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <select
+                                id="metricField"
+                                class="form-select form-select-sm flex-grow-1 flex-lg-grow-0"
+                            ></select>
+                            <span class="text-muted small">por</span>
+                            <select
+                                id="aggregationField"
+                                class="form-select form-select-sm flex-grow-1 flex-lg-grow-0"
+                            ></select>
+                        </div>
                     </div>
                     <div class="col-12 col-lg-3">
                         <span
