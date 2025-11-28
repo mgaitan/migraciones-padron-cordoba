@@ -581,14 +581,6 @@
                 fillColor: "#3b82f6",
                 fillOpacity: 0.85,
             };
-            const approxMarkerStyle = {
-                radius: 6,
-                color: "#7c3aed",
-                weight: 1,
-                fillColor: "#c4b5fd",
-                fillOpacity: 0.85,
-                dashArray: "2,3",
-            };
             const highlightMarkerStyle = {
                 radius: 9,
                 color: "#f97316",
@@ -974,16 +966,13 @@
                         !Number.isFinite(item.lon)
                     )
                         return;
-                    const style = item.isApproxLocation
-                        ? approxMarkerStyle
-                        : defaultMarkerStyle;
-                    const marker = L.circleMarker([item.lat, item.lon], style);
+                    const marker = L.circleMarker(
+                        [item.lat, item.lon],
+                        defaultMarkerStyle,
+                    );
                     marker.bindPopup(buildPopup(item));
                     marker.addTo(markersLayer);
-                    markerRefs.set(item.maquina, {
-                        marker,
-                        isApprox: item.isApproxLocation,
-                    });
+                    markerRefs.set(item.maquina, { marker });
                     points.push([item.lat, item.lon]);
                 });
                 if (points.length) {
@@ -1153,14 +1142,12 @@
 
             function highlightMachines(targetSet) {
                 markerRefs.forEach((entry, key) => {
-                    const { marker, isApprox } = entry;
+                    const { marker } = entry;
                     if (targetSet && targetSet.has(key)) {
                         marker.setStyle(highlightMarkerStyle);
                         if (marker.bringToFront) marker.bringToFront();
                     } else {
-                        marker.setStyle(
-                            isApprox ? approxMarkerStyle : defaultMarkerStyle,
-                        );
+                        marker.setStyle(defaultMarkerStyle);
                         if (marker.bringToBack) marker.bringToBack();
                     }
                 });
