@@ -62,6 +62,10 @@
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+            .bar-selected rect {
+                stroke: #111827;
+                stroke-width: 2;
+            }
             .multiselect {
                 position: relative;
             }
@@ -566,7 +570,77 @@
             const energyFormatter = new Intl.NumberFormat("es-AR", {
                 maximumFractionDigits: 0,
             });
-            const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
+
+            const colorCache = new Map();
+            const strokeColorCache = new Map();
+            const basePalette = [
+                "#e63946",
+                "#ff9f1c",
+                "#95c623",
+                "#33658a",
+                "#6a4c93",
+                "#00a8e8",
+                "#f28482",
+                "#edae49",
+                "#06d6a0",
+                "#40916c",
+                "#f4a261",
+                "#8d99ae",
+                "#ff70a6",
+                "#ff9770",
+                "#70d6ff",
+                "#1b998b",
+                "#c77dff",
+                "#4cc9f0",
+                "#ffba08",
+                "#3a86ff",
+                "#577590",
+                "#f25f5c",
+                "#1982c4",
+                "#8338ec",
+                "#4ecdc4",
+                "#ffbd00",
+            ];
+            let colorSequenceIndex = 0;
+
+            function nextPaletteColor() {
+                if (colorSequenceIndex < basePalette.length) {
+                    const precomputed = basePalette[colorSequenceIndex];
+                    colorSequenceIndex += 1;
+                    return precomputed;
+                }
+                const hue = (colorSequenceIndex * 137.508) % 360;
+                const saturation = 65;
+                const lightness = 48 + ((colorSequenceIndex % 4) - 1) * 8;
+                colorSequenceIndex += 1;
+                return `hsl(${hue}, ${saturation}%, ${Math.max(30, Math.min(65, lightness))}%)`;
+            }
+
+            function getColorForCategory(value) {
+                const safeValue =
+                    value === undefined || value === null
+                        ? ""
+                        : String(value);
+                const key = safeValue.trim() ? safeValue.trim() : "Sin dato";
+                if (colorCache.has(key)) return colorCache.get(key);
+                const color = nextPaletteColor();
+                colorCache.set(key, color);
+                return color;
+            }
+
+            function getStrokeColor(fillColor) {
+                if (!fillColor) return "#1f2937";
+                if (strokeColorCache.has(fillColor))
+                    return strokeColorCache.get(fillColor);
+                const parsed = d3.color(fillColor);
+                if (!parsed) {
+                    strokeColorCache.set(fillColor, "#1f2937");
+                    return "#1f2937";
+                }
+                const darker = parsed.darker(0.8).formatHex();
+                strokeColorCache.set(fillColor, darker);
+                return darker;
+            }
 
             const summarySpan = document.getElementById("summary");
             const mapCounterSpan = document.getElementById("mapCounter");
@@ -574,25 +648,18 @@
             const chartCaption = document.getElementById("chartCaption");
             const resetButton = document.getElementById("resetFilters");
 
-            const defaultMarkerStyle = {
-                radius: 6,
-                color: "#1d4ed8",
+            const markerBaseStyle = {
                 weight: 1,
-                fillColor: "#3b82f6",
-                fillOpacity: 0.85,
-            };
-            const highlightMarkerStyle = {
-                radius: 9,
-                color: "#f97316",
-                weight: 2,
-                fillColor: "#fb923c",
-                fillOpacity: 0.95,
+                opacity: 0.85,
+                fillOpacity: 0.6,
             };
 
             let machines = [];
             let map;
             let markersLayer;
             const markerRefs = new Map();
+            let persistentHighlightConfig = null;
+            let hoverHighlightSet = null;
 
             init();
 
@@ -908,9 +975,30 @@
 
             function updateVisuals() {
                 const filtered = getFilteredData();
+                const dimension = aggregationSelect.value;
+                if (
+                    persistentHighlightConfig &&
+                    persistentHighlightConfig.dimension !== dimension
+                ) {
+                    persistentHighlightConfig = null;
+                }
+                if (persistentHighlightConfig) {
+                    const updatedMatches = collectMatches(
+                        persistentHighlightConfig.value,
+                        dimension,
+                        filtered,
+                    );
+                    if (updatedMatches && updatedMatches.size) {
+                        persistentHighlightConfig.matches = updatedMatches;
+                    } else {
+                        persistentHighlightConfig = null;
+                    }
+                }
+                hoverHighlightSet = null;
                 updateSummary(filtered);
-                renderMap(filtered);
-                renderBars(filtered);
+                renderMap(filtered, dimension);
+                renderBars(filtered, dimension);
+                applyHighlightStyles();
                 syncStateToURL();
             }
 
@@ -956,23 +1044,43 @@
                 markersLayer = L.layerGroup().addTo(map);
             }
 
-            function renderMap(data) {
+            function renderMap(data, dimension) {
                 markersLayer.clearLayers();
                 markerRefs.clear();
                 const points = [];
+                const valueScale = d3
+                    .scaleSqrt()
+                    .domain([0, d3.max(data, (d) => d.generacion_total) || 1])
+                    .range([5, 24]);
                 data.forEach((item) => {
                     if (
                         !Number.isFinite(item.lat) ||
                         !Number.isFinite(item.lon)
                     )
                         return;
+                    const categoryValue = getDimensionValue(item, dimension);
+                    const fillColor = getColorForCategory(categoryValue);
+                    const radius = valueScale(
+                        Math.max(0, item.generacion_total || 0),
+                    );
+                    const markerStyle = {
+                        ...markerBaseStyle,
+                        radius,
+                        fillColor,
+                        color: getStrokeColor(fillColor),
+                    };
                     const marker = L.circleMarker(
                         [item.lat, item.lon],
-                        defaultMarkerStyle,
+                        markerStyle,
                     );
                     marker.bindPopup(buildPopup(item));
                     marker.addTo(markersLayer);
-                    markerRefs.set(item.maquina, { marker });
+                    markerRefs.set(item.maquina, {
+                        marker,
+                        item,
+                        color: fillColor,
+                        radius,
+                    });
                     points.push([item.lat, item.lon]);
                 });
                 if (points.length) {
@@ -981,7 +1089,6 @@
                 } else {
                     map.setView([-38.5, -63], 4);
                 }
-                highlightMachines(null);
             }
 
             function buildPopup(item) {
@@ -997,10 +1104,9 @@
         </div>`;
             }
 
-            function renderBars(data) {
+            function renderBars(data, dimension) {
                 const container = document.getElementById("barChart");
                 container.innerHTML = "";
-                const dimension = aggregationSelect.value;
                 const dimensionLabel =
                     aggregationOptions.find((opt) => opt.value === dimension)
                         ?.label || "";
@@ -1016,10 +1122,7 @@
                     .rollups(
                         data,
                         (v) => d3.sum(v, (d) => d.generacion_total),
-                        (d) =>
-                            d[dimension] && d[dimension] !== "Sin dato"
-                                ? d[dimension]
-                                : "Sin dato",
+                        (d) => getDimensionValue(d, dimension),
                     )
                     .sort((a, b) => b[1] - a[1]);
                 const maxBars = dimension === "provincia" ? 15 : 12;
@@ -1100,7 +1203,9 @@
                     .attr("width", (d) => Math.max(4, x(d[1])))
                     .attr("rx", 6)
                     .attr("fill", (d) =>
-                        d[0] === "Otros" ? "#dbeafe" : colorScale(d[0]),
+                        d[0] === "Otros"
+                            ? "#dbeafe"
+                            : getColorForCategory(d[0]),
                     );
 
                 bars.append("text")
@@ -1114,41 +1219,117 @@
                             `${numberFormatter.format(Math.round(d[1]))} MWh`,
                     );
 
-                bars.on("mouseenter", (event, d) =>
-                    highlightByDimension(d[0], dimension, data),
-                ).on("mouseleave", clearHighlights);
+                function refreshBarSelection() {
+                    bars.classed(
+                        "bar-selected",
+                        (d) =>
+                            !!(
+                                persistentHighlightConfig &&
+                                persistentHighlightConfig.value === d[0] &&
+                                persistentHighlightConfig.dimension ===
+                                    dimension
+                            ),
+                    );
+                }
+
+                bars.on("mouseenter", (event, d) => {
+                    if (d[0] === "Otros") return;
+                    setHoverHighlight(d[0], dimension, data);
+                })
+                    .on("mouseleave", () => {
+                        clearHoverHighlight();
+                    })
+                    .on("click", (event, d) => {
+                        if (d[0] === "Otros") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        togglePersistentHighlight(d[0], dimension, data);
+                        refreshBarSelection();
+                    });
+
+                refreshBarSelection();
 
                 container.appendChild(svg.node());
             }
 
-            function highlightByDimension(value, dimension, data) {
-                if (value === "Otros") {
-                    highlightMachines(null);
-                    return;
+            function getDimensionValue(item, dimension) {
+                const raw = item[dimension];
+                if (raw === undefined || raw === null) return "Sin dato";
+                if (typeof raw === "string") {
+                    const trimmed = raw.trim();
+                    return trimmed ? trimmed : "Sin dato";
                 }
-                const matches = new Set(
-                    data
-                        .filter(
-                            (item) => (item[dimension] || "Sin dato") === value,
-                        )
-                        .map((item) => item.maquina),
-                );
-                highlightMachines(matches);
+                const converted = String(raw);
+                return converted.trim() ? converted.trim() : "Sin dato";
             }
 
-            function clearHighlights() {
-                highlightMachines(null);
+            function collectMatches(value, dimension, data) {
+                if (!value || value === "Otros") return null;
+                const matches = new Set();
+                const target = String(value ?? "").trim();
+                data.forEach((item) => {
+                    if (getDimensionValue(item, dimension) === target) {
+                        matches.add(item.maquina);
+                    }
+                });
+                return matches.size ? matches : null;
             }
 
-            function highlightMachines(targetSet) {
-                markerRefs.forEach((entry, key) => {
-                    const { marker } = entry;
-                    if (targetSet && targetSet.has(key)) {
-                        marker.setStyle(highlightMarkerStyle);
-                        if (marker.bringToFront) marker.bringToFront();
+            function setHoverHighlight(value, dimension, data) {
+                hoverHighlightSet = collectMatches(value, dimension, data);
+                applyHighlightStyles();
+            }
+
+            function clearHoverHighlight() {
+                hoverHighlightSet = null;
+                applyHighlightStyles();
+            }
+
+            function togglePersistentHighlight(value, dimension, data) {
+                if (
+                    persistentHighlightConfig &&
+                    persistentHighlightConfig.value === value &&
+                    persistentHighlightConfig.dimension === dimension
+                ) {
+                    persistentHighlightConfig = null;
+                } else {
+                    const matches = collectMatches(value, dimension, data);
+                    if (matches) {
+                        persistentHighlightConfig = {
+                            value,
+                            dimension,
+                            matches,
+                        };
                     } else {
-                        marker.setStyle(defaultMarkerStyle);
-                        if (marker.bringToBack) marker.bringToBack();
+                        persistentHighlightConfig = null;
+                    }
+                }
+                applyHighlightStyles();
+            }
+
+            function applyHighlightStyles() {
+                const persistentSet =
+                    persistentHighlightConfig?.matches || null;
+                markerRefs.forEach((entry) => {
+                    const { marker, item, color, radius } = entry;
+                    const isPersistent =
+                        persistentSet && persistentSet.has(item.maquina);
+                    const isHover =
+                        hoverHighlightSet &&
+                        hoverHighlightSet.has(item.maquina);
+                    const style = {
+                        radius,
+                        fillColor: color,
+                        color: isPersistent
+                            ? "#111827"
+                            : getStrokeColor(color),
+                        weight: isPersistent ? 3 : isHover ? 2 : 1,
+                        opacity: isPersistent ? 1 : 0.85,
+                        fillOpacity: isPersistent || isHover ? 0.85 : 0.6,
+                    };
+                    marker.setStyle(style);
+                    if (isPersistent || isHover) {
+                        if (marker.bringToFront) marker.bringToFront();
                     }
                 });
             }
