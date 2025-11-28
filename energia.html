@@ -163,6 +163,40 @@
             <div class="card p-3 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-md-2">
+                        <label for="filterAno" class="filter-label"
+                            >Año</label
+                        >
+                        <div class="multiselect" data-filter-field="ano">
+                            <button
+                                id="filterAno"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todos</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-2">
                         <label for="filterGrupo" class="filter-label"
                             >Grupo económico</label
                         >
@@ -447,6 +481,7 @@
         ></script>
         <script>
             const filters = {
+                ano: [],
                 grupo_economico: [],
                 region: [],
                 provincia: [],
@@ -456,6 +491,7 @@
             };
             const multiSelectState = {};
             const filterParamKeys = {
+                ano: "an",
                 grupo_economico: "ge",
                 region: "rg",
                 provincia: "pr",
@@ -466,6 +502,7 @@
             let isRestoringStateFromUrl = false;
 
             const filterConfig = [
+                { id: "filterAno", field: "ano", label: "Año" },
                 {
                     id: "filterGrupo",
                     field: "grupo_economico",
@@ -647,6 +684,7 @@
             const mapNote = document.getElementById("mapNote");
             const chartCaption = document.getElementById("chartCaption");
             const resetButton = document.getElementById("resetFilters");
+            let availableYears = [];
 
             const markerBaseStyle = {
                 weight: 1,
@@ -667,6 +705,15 @@
                 createMap();
                 d3.csv("oferta_grupos.csv", parseRow).then((rows) => {
                     machines = aggregateMachines(rows);
+                    availableYears = Array.from(
+                        new Set(
+                            rows
+                                .map((row) => row.ano)
+                                .filter((value) => Number.isFinite(value)),
+                        ),
+                    )
+                        .sort((a, b) => b - a)
+                        .map((value) => value.toString());
                     populateFilters(machines);
                     applyStateFromURL();
                 });
@@ -715,6 +762,18 @@
                             typeof value === "string" ? value.trim() : value;
                         return trimmed === "" ? "Sin dato" : trimmed;
                     };
+                    const generationByYear = {};
+                    items.forEach((entry) => {
+                        const yearKey = Number.isFinite(entry.ano)
+                            ? entry.ano.toString()
+                            : "Sin dato";
+                        generationByYear[yearKey] =
+                            (generationByYear[yearKey] || 0) +
+                            (entry.generacion_neta || 0);
+                    });
+                    const generationTotal = Object.values(
+                        generationByYear,
+                    ).reduce((sum, value) => sum + value, 0);
                     return {
                         maquina,
                         central: pick("central"),
@@ -741,24 +800,37 @@
                         geo_sistema: sample.geo_sistema || "Sin dato",
                         hasExactLocation,
                         isApproxLocation,
-                        generacion_total: d3.sum(
-                            items,
-                            (d) => d.generacion_neta,
-                        ),
+                        generacion_total: generationTotal,
+                        generacion_por_ano: generationByYear,
                         registros: items.length,
                     };
                 });
             }
 
+            function sumGenerationForYears(machine, years) {
+                if (!years || years.length === 0)
+                    return machine.generacion_total;
+                const map = machine.generacion_por_ano || {};
+                return years.reduce(
+                    (sum, year) => sum + (map[year] || 0),
+                    0,
+                );
+            }
+
             function populateFilters(data) {
                 filterConfig.forEach((cfg) => {
-                    const values = Array.from(
-                        new Set(
-                            data
-                                .map((d) => d[cfg.field])
-                                .filter((value) => value && value.trim()),
-                        ),
-                    ).sort((a, b) => a.localeCompare(b, "es"));
+                    let values = [];
+                    if (cfg.field === "ano") {
+                        values = availableYears.slice();
+                    } else {
+                        values = Array.from(
+                            new Set(
+                                data
+                                    .map((d) => d[cfg.field])
+                                    .filter((value) => value && value.trim()),
+                            ),
+                        ).sort((a, b) => a.localeCompare(b, "es"));
+                    }
                     buildMultiSelect(cfg, values);
                 });
 
@@ -881,7 +953,8 @@
                 if (!state || !state.labelEl) return;
                 const selected = filters[field] || [];
                 if (selected.length === 0) {
-                    state.labelEl.textContent = "Todas";
+                    state.labelEl.textContent =
+                        field === "ano" ? "Todos" : "Todas";
                 } else if (selected.length === 1) {
                     state.labelEl.textContent = selected[0];
                 } else if (selected.length <= 3) {
@@ -965,12 +1038,29 @@
             }
 
             function getFilteredData() {
-                return machines.filter((item) => {
-                    return Object.entries(filters).every(([field, values]) => {
-                        if (!values || values.length === 0) return true;
-                        return values.includes(item[field]);
+                const activeYears = filters.ano || [];
+                return machines
+                    .map((machine) => {
+                        const generation = sumGenerationForYears(
+                            machine,
+                            activeYears,
+                        );
+                        return {
+                            ...machine,
+                            generacion_total: generation,
+                        };
+                    })
+                    .filter((item) => {
+                        if (activeYears.length && item.generacion_total <= 0)
+                            return false;
+                        return Object.entries(filters).every(
+                            ([field, values]) => {
+                                if (field === "ano") return true;
+                                if (!values || values.length === 0) return true;
+                                return values.includes(item[field]);
+                            },
+                        );
                     });
-                });
             }
 
             function updateVisuals() {
