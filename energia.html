@@ -62,6 +62,86 @@
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
+            .multiselect {
+                position: relative;
+            }
+            .multiselect-toggle {
+                width: 100%;
+                background: #fff;
+                border: 1px solid #d1d5db;
+                border-radius: 0.375rem;
+                padding: 0.35rem 0.75rem;
+                font-size: 0.85rem;
+                line-height: 1.35;
+                text-align: left;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+                color: #111827;
+            }
+            .multiselect-toggle:focus {
+                outline: 2px solid #a5b4fc;
+                outline-offset: 2px;
+            }
+            .multiselect-label {
+                flex: 1;
+                min-width: 0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .multiselect-caret {
+                font-size: 0.7rem;
+                color: #6b7280;
+            }
+            .multiselect-menu {
+                position: absolute;
+                top: calc(100% + 0.35rem);
+                left: 0;
+                right: 0;
+                z-index: 1200;
+                background: #fff;
+                border-radius: 0.5rem;
+                border: 1px solid #e5e7eb;
+                box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+                padding: 0.75rem;
+                display: none;
+            }
+            .multiselect.open .multiselect-menu {
+                display: block;
+            }
+            .multiselect-actions {
+                display: flex;
+                justify-content: space-between;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+            .multiselect-actions button {
+                border: none;
+                background: none;
+                padding: 0;
+                font-size: 0.78rem;
+                color: #4f46e5;
+            }
+            .multiselect-actions button:hover {
+                text-decoration: underline;
+            }
+            .multiselect-options {
+                max-height: 220px;
+                overflow-y: auto;
+                padding-right: 0.25rem;
+            }
+            .multiselect-option {
+                display: flex;
+                align-items: center;
+                gap: 0.4rem;
+                font-size: 0.82rem;
+                margin-bottom: 0.35rem;
+            }
+            .multiselect-option input {
+                accent-color: #4f46e5;
+            }
         </style>
     </head>
     <body>
@@ -82,55 +162,214 @@
                         <label for="filterGrupo" class="filter-label"
                             >Grupo económico</label
                         >
-                        <select
-                            id="filterGrupo"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div
+                            class="multiselect"
+                            data-filter-field="grupo_economico"
+                        >
+                            <button
+                                id="filterGrupo"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label for="filterRegion" class="filter-label"
                             >Región</label
                         >
-                        <select
-                            id="filterRegion"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div class="multiselect" data-filter-field="region">
+                            <button
+                                id="filterRegion"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label for="filterProvincia" class="filter-label"
                             >Provincia</label
                         >
-                        <select
-                            id="filterProvincia"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div class="multiselect" data-filter-field="provincia">
+                            <button
+                                id="filterProvincia"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label for="filterTipo" class="filter-label"
                             >Tipo máquina</label
                         >
-                        <select
-                            id="filterTipo"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div
+                            class="multiselect"
+                            data-filter-field="tipo_maquina"
+                        >
+                            <button
+                                id="filterTipo"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label for="filterTecnologia" class="filter-label"
                             >Tecnología</label
                         >
-                        <select
-                            id="filterTecnologia"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div class="multiselect" data-filter-field="tecnologia">
+                            <button
+                                id="filterTecnologia"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-12 col-md-2">
                         <label for="filterFuente" class="filter-label"
                             >Fuente generación</label
                         >
-                        <select
-                            id="filterFuente"
-                            class="form-select form-select-sm"
-                        ></select>
+                        <div
+                            class="multiselect"
+                            data-filter-field="fuente_generacion"
+                        >
+                            <button
+                                id="filterFuente"
+                                type="button"
+                                class="multiselect-toggle"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="multiselect-label">Todas</span>
+                                <span class="multiselect-caret">&#9662;</span>
+                            </button>
+                            <div class="multiselect-menu" role="listbox">
+                                <div class="multiselect-actions">
+                                    <button
+                                        type="button"
+                                        class="multiselect-select-all"
+                                    >
+                                        Seleccionar todos
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="multiselect-clear"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <div class="multiselect-options"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="row g-3 mt-2">
@@ -204,13 +443,14 @@
         ></script>
         <script>
             const filters = {
-                grupo_economico: "",
-                region: "",
-                provincia: "",
-                tipo_maquina: "",
-                tecnologia: "",
-                fuente_generacion: "",
+                grupo_economico: [],
+                region: [],
+                provincia: [],
+                tipo_maquina: [],
+                tecnologia: [],
+                fuente_generacion: [],
             };
+            const multiSelectState = {};
 
             const filterConfig = [
                 {
@@ -444,62 +684,167 @@
 
             function populateFilters(data) {
                 filterConfig.forEach((cfg) => {
-                    const select = document.getElementById(cfg.id);
-                    fillSelect(
-                        select,
-                        data.map((d) => d[cfg.field]),
-                    );
-                    select.addEventListener("change", () => {
-                        filters[cfg.field] = select.value;
-                        updateVisuals();
-                    });
+                    const values = Array.from(
+                        new Set(
+                            data
+                                .map((d) => d[cfg.field])
+                                .filter((value) => value && value.trim()),
+                        ),
+                    ).sort((a, b) => a.localeCompare(b, "es"));
+                    buildMultiSelect(cfg, values);
                 });
+
                 resetButton.addEventListener("click", () => {
-                    Object.keys(filters).forEach((key) => (filters[key] = ""));
                     filterConfig.forEach((cfg) => {
-                        const select = document.getElementById(cfg.id);
-                        select.value = "";
+                        setMultiSelectSelections(cfg.field, []);
                     });
                     updateVisuals();
                 });
+
                 aggregationSelect.addEventListener("change", () => {
                     updateVisuals();
                 });
+
+                document.addEventListener("click", (event) => {
+                    if (!event.target.closest(".multiselect")) {
+                        closeAllMultiSelects();
+                    }
+                });
+
+                document.addEventListener("keydown", (event) => {
+                    if (event.key === "Escape") {
+                        closeAllMultiSelects();
+                    }
+                });
             }
 
-            function fillSelect(select, values) {
-                const uniqueValues = Array.from(
-                    new Set(values.filter(Boolean)),
-                ).sort((a, b) => a.localeCompare(b, "es"));
-                select.innerHTML = "";
-                const optionAll = document.createElement("option");
-                optionAll.value = "";
-                optionAll.textContent = "Todas";
-                select.appendChild(optionAll);
-                uniqueValues.forEach((value) => {
-                    const opt = document.createElement("option");
-                    opt.value = value;
-                    opt.textContent = value;
-                    select.appendChild(opt);
+            function buildMultiSelect(config, values) {
+                const toggle = document.getElementById(config.id);
+                if (!toggle) return;
+                const container = toggle.closest(".multiselect");
+                const optionsWrapper = container.querySelector(
+                    ".multiselect-options",
+                );
+                const selectAllBtn = container.querySelector(
+                    ".multiselect-select-all",
+                );
+                const clearBtn = container.querySelector(".multiselect-clear");
+                const labelEl = container.querySelector(".multiselect-label");
+
+                optionsWrapper.innerHTML = "";
+                const state = {
+                    field: config.field,
+                    toggle,
+                    container,
+                    labelEl,
+                    optionsWrapper,
+                    selectAllBtn,
+                    clearBtn,
+                    values,
+                    inputs: [],
+                };
+                multiSelectState[config.field] = state;
+
+                values.forEach((value, index) => {
+                    const optionLabel = document.createElement("label");
+                    optionLabel.className = "multiselect-option";
+                    const input = document.createElement("input");
+                    input.type = "checkbox";
+                    input.id = `${config.id}_opt_${index}`;
+                    input.value = value;
+                    const text = document.createElement("span");
+                    text.textContent = value;
+                    optionLabel.appendChild(input);
+                    optionLabel.appendChild(text);
+                    optionsWrapper.appendChild(optionLabel);
+                    state.inputs.push(input);
+                    input.addEventListener("change", () =>
+                        handleCheckboxChange(state),
+                    );
+                });
+
+                toggle.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    toggleMultiSelect(state);
+                });
+
+                if (selectAllBtn) {
+                    selectAllBtn.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        setMultiSelectSelections(state.field, state.values);
+                        updateVisuals();
+                    });
+                }
+
+                if (clearBtn) {
+                    clearBtn.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        setMultiSelectSelections(state.field, []);
+                        updateVisuals();
+                    });
+                }
+
+                updateMultiSelectLabel(state.field);
+            }
+
+            function handleCheckboxChange(state) {
+                filters[state.field] = state.inputs
+                    .filter((input) => input.checked)
+                    .map((input) => input.value);
+                updateMultiSelectLabel(state.field);
+                updateVisuals();
+            }
+
+            function setMultiSelectSelections(field, selectedValues) {
+                const state = multiSelectState[field];
+                if (!state) return;
+                const allowed = new Set(selectedValues);
+                state.inputs.forEach((input) => {
+                    input.checked = allowed.has(input.value);
+                });
+                filters[field] = state.inputs
+                    .filter((input) => input.checked)
+                    .map((input) => input.value);
+                updateMultiSelectLabel(field);
+            }
+
+            function updateMultiSelectLabel(field) {
+                const state = multiSelectState[field];
+                if (!state || !state.labelEl) return;
+                const selected = filters[field] || [];
+                if (selected.length === 0) {
+                    state.labelEl.textContent = "Todas";
+                } else if (selected.length === 1) {
+                    state.labelEl.textContent = selected[0];
+                } else if (selected.length <= 3) {
+                    state.labelEl.textContent = selected.join(", ");
+                } else {
+                    state.labelEl.textContent = `${selected.length} seleccionados`;
+                }
+            }
+
+            function toggleMultiSelect(state) {
+                const shouldOpen = !state.container.classList.contains("open");
+                closeAllMultiSelects();
+                if (shouldOpen) {
+                    state.container.classList.add("open");
+                    state.toggle.setAttribute("aria-expanded", "true");
+                }
+            }
+
+            function closeAllMultiSelects() {
+                Object.values(multiSelectState).forEach((state) => {
+                    state.container.classList.remove("open");
+                    state.toggle.setAttribute("aria-expanded", "false");
                 });
             }
 
             function getFilteredData() {
                 return machines.filter((item) => {
-                    return (
-                        (!filters.grupo_economico ||
-                            item.grupo_economico === filters.grupo_economico) &&
-                        (!filters.region || item.region === filters.region) &&
-                        (!filters.provincia ||
-                            item.provincia === filters.provincia) &&
-                        (!filters.tipo_maquina ||
-                            item.tipo_maquina === filters.tipo_maquina) &&
-                        (!filters.tecnologia ||
-                            item.tecnologia === filters.tecnologia) &&
-                        (!filters.fuente_generacion ||
-                            item.fuente_generacion ===
-                                filters.fuente_generacion)
-                    );
+                    return Object.entries(filters).every(([field, values]) => {
+                        if (!values || values.length === 0) return true;
+                        return values.includes(item[field]);
+                    });
                 });
             }
 
