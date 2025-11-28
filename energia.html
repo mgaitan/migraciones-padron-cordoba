@@ -566,6 +566,27 @@
                 TUCUMAN: { lat: -26.9, lon: -65.2 },
             };
 
+            const technologyLabels = {
+                CC: "Ciclo combinado",
+                HI: "Hidroeléctrica",
+                "HI<50": "Hidroeléctrica <=50 MW",
+                "HI>50": "Hidroeléctrica >50 MW",
+                BIOG: "Biogás",
+                BIOM: "Biomasa",
+                SOL: "Solar",
+                EOL: "Eólica",
+                NUC: "Nuclear",
+                DI: "Diésel",
+                TG: "Turbogás",
+                TV: "Turbovapor",
+            };
+
+            function expandTechnologyLabel(value) {
+                if (!value || value === "Sin dato") return value;
+                const key = value.toString().trim().toUpperCase();
+                return technologyLabels[key] || value;
+            }
+
             function normalizeProvince(name) {
                 return (name || "").toString().trim().toUpperCase();
             }
@@ -837,6 +858,13 @@
                     const generationTotal = Object.values(
                         generationByYear,
                     ).reduce((sum, value) => sum + value, 0);
+                    const rawTecnologia = pick("tecnologia");
+                    const expandedTecnologia = expandTechnologyLabel(
+                        rawTecnologia,
+                    );
+                    const geoTecnologiaValue = expandTechnologyLabel(
+                        sample.geo_tecnologia || rawTecnologia,
+                    );
                     return {
                         maquina,
                         central: pick("central"),
@@ -847,7 +875,7 @@
                         pais: pick("pais"),
                         tipo_maquina: pick("tipo_maquina"),
                         fuente_generacion: pick("fuente_generacion"),
-                        tecnologia: pick("tecnologia"),
+                        tecnologia: expandedTecnologia,
                         categoria_hidraulica: pick("categoria_hidraulica"),
                         categoria_region: pick("categoria_region"),
                         grupo_economico: pick("grupo_economico"),
@@ -855,8 +883,7 @@
                         lat,
                         geo_nombre:
                             sample.geo_nombre || pick("agente_descripcion"),
-                        geo_tecnologia:
-                            sample.geo_tecnologia || pick("tecnologia"),
+                        geo_tecnologia: geoTecnologiaValue,
                         geo_nombre_age:
                             sample.geo_nombre_age || pick("agente_descripcion"),
                         potencia_instalada: sample.potencia_instalada || null,
