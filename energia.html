@@ -451,6 +451,15 @@
                 fuente_generacion: [],
             };
             const multiSelectState = {};
+            const filterParamKeys = {
+                grupo_economico: "ge",
+                region: "rg",
+                provincia: "pr",
+                tipo_maquina: "tm",
+                tecnologia: "te",
+                fuente_generacion: "fg",
+            };
+            let isRestoringStateFromUrl = false;
 
             const filterConfig = [
                 {
@@ -600,7 +609,7 @@
                 d3.csv("oferta_grupos.csv", parseRow).then((rows) => {
                     machines = aggregateMachines(rows);
                     populateFilters(machines);
-                    updateVisuals();
+                    applyStateFromURL();
                 });
             }
 
@@ -839,6 +848,63 @@
                 });
             }
 
+            function applyStateFromURL() {
+                if (typeof window === "undefined") {
+                    updateVisuals();
+                    return;
+                }
+                const params = new URLSearchParams(window.location.search);
+                isRestoringStateFromUrl = true;
+                filterConfig.forEach((cfg) => {
+                    const paramKey = filterParamKeys[cfg.field];
+                    const raw = params.get(paramKey);
+                    const values = raw
+                        ? raw
+                              .split("|")
+                              .map((value) => value.trim())
+                              .filter(Boolean)
+                        : [];
+                    setMultiSelectSelections(cfg.field, values);
+                });
+                const aggParam = params.get("agg");
+                if (
+                    aggParam &&
+                    aggregationOptions.some((opt) => opt.value === aggParam)
+                ) {
+                    aggregationSelect.value = aggParam;
+                } else {
+                    aggregationSelect.value = "grupo_economico";
+                }
+                updateVisuals();
+                isRestoringStateFromUrl = false;
+                syncStateToURL();
+            }
+
+            function syncStateToURL() {
+                if (typeof window === "undefined") return;
+                if (isRestoringStateFromUrl) return;
+                const params = new URLSearchParams();
+                params.set("agg", aggregationSelect.value);
+                filterConfig.forEach((cfg) => {
+                    const values = filters[cfg.field];
+                    if (values && values.length) {
+                        params.set(
+                            filterParamKeys[cfg.field],
+                            values.join("|"),
+                        );
+                    }
+                });
+                const queryString = params.toString();
+                // Keep query strings concise (< ~2000 chars) by using terse keys and a compact delimiter.
+                const newUrl = `${
+                    window.location.pathname
+                }${queryString ? `?${queryString}` : ""}`;
+                const currentUrl = `${window.location.pathname}${window.location.search}`;
+                if (newUrl !== currentUrl) {
+                    window.history.replaceState(null, "", newUrl);
+                }
+            }
+
             function getFilteredData() {
                 return machines.filter((item) => {
                     return Object.entries(filters).every(([field, values]) => {
@@ -853,6 +919,7 @@
                 updateSummary(filtered);
                 renderMap(filtered);
                 renderBars(filtered);
+                syncStateToURL();
             }
 
             function updateSummary(data) {
